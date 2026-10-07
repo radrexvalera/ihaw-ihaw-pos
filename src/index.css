@@ -14,17 +14,28 @@
 
 @layer base {
   html,
-  body,
-  #root {
+  body {
     height: 100%;
+    /* Dark page background = the charcoal header colour. iOS picks the status-bar
+       style from it in home-screen mode (white clock text, no light blur over the header). */
+    background-color: var(--color-char);
   }
   html {
     -webkit-text-size-adjust: 100%;
     -webkit-tap-highlight-color: transparent;
   }
   body {
-    @apply bg-stone-100 text-stone-950 antialiased;
-    overscroll-behavior-y: none;
+    @apply text-stone-950 antialiased;
+    overscroll-behavior: none;
+  }
+  /* Pin the app to the whole physical screen. In iOS home-screen mode 100% / 100vh is
+     "screen minus status bar", which left a gap under the bottom nav. A fixed element
+     with inset 0 always covers the full screen; screens scroll inside themselves. */
+  #root {
+    position: fixed;
+    inset: 0;
+    overflow-y: auto;
+    @apply bg-stone-100;
   }
   /* Removes the double-tap-zoom delay on every control. */
   button,
