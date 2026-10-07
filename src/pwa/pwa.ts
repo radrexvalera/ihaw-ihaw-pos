@@ -115,31 +115,3 @@ export async function requestPersistentStorage(): Promise<boolean> {
     return false
   }
 }
-
-/**
- * iOS home-screen bug: with the status bar overlaid, the area `position: fixed;
- * inset: 0` fills is "screen minus status bar", leaving a gap under the bottom
- * nav. Measure the gap and stretch the app root to the physical bottom edge.
- * Measurement-based, so it does nothing on devices (or future iOS versions)
- * without the bug.
- */
-export function fitIosStandaloneScreen(): void {
-  if (!isIos() || !isStandalone()) return
-  const root = document.getElementById('root')
-  if (!root) return
-
-  const fit = () => {
-    root.style.bottom = ''
-    const portrait = window.matchMedia('(orientation: portrait)').matches
-    const screenHeight = portrait
-      ? Math.max(window.screen.width, window.screen.height)
-      : Math.min(window.screen.width, window.screen.height)
-    const gap = Math.round(screenHeight - root.getBoundingClientRect().bottom)
-    // Only a status-bar-sized gap is this bug; anything else (keyboard open, split view) is left alone.
-    if (gap > 0 && gap <= 80) root.style.bottom = `${-gap}px`
-  }
-
-  fit()
-  window.addEventListener('resize', () => requestAnimationFrame(fit))
-  window.addEventListener('orientationchange', () => setTimeout(fit, 300))
-}

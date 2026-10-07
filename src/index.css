@@ -28,9 +28,8 @@
     @apply text-stone-950 antialiased;
     overscroll-behavior: none;
   }
-  /* Pin the app to the whole physical screen. In iOS home-screen mode 100% / 100vh is
-     "screen minus status bar", which left a gap under the bottom nav. A fixed element
-     with inset 0 always covers the full screen; screens scroll inside themselves. */
+  /* Pin the app to the window it is given (no page-level scrolling or rubber-banding);
+     screens scroll inside themselves. */
   #root {
     position: fixed;
     inset: 0;
