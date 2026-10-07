@@ -1,0 +1,3 @@
+# Store text files with LF in the repo (clean diffs, Linux CI / Netlify).
+* text=auto eol=lf
+*.png binary
