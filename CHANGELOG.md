@@ -8,7 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### iPhone home-screen layout fix (2026-10-07)
 
 #### Fixed
-- **Bottom gap on iPhone home-screen app:** iOS sizes standalone pages as "screen minus status bar", which left an empty band under the bottom nav. The app root is now pinned to the full physical screen (`position: fixed; inset: 0`).
+- **Bottom gap on iPhone home-screen app:** iOS sizes standalone pages, *including* fixed-position elements, as "screen minus status bar", which left an empty band under the bottom nav. The app root is pinned with `position: fixed; inset: 0`. On iPhone in home-screen mode, the app also measures the remaining gap to the physical bottom edge and stretches the root to close it (`fitIosStandaloneScreen`). Because it measures, it does nothing on devices or future iOS versions that don't have the bug.
 - **Top looked hidden or washed out on iPhone:** newer iOS picks the status-bar style from the page background, which was light, so it used a black clock and a light blur over the dark header. The page background is now the charcoal header colour, so the clock is white and the header shows cleanly under it.
 
 ### "Price varies" products (2026-10-07)
