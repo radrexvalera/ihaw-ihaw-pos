@@ -89,12 +89,12 @@ beforeAll(async () => {
 })
 
 describe('migrations and seed', () => {
-  it('seeds the sample products, with unpriced items disabled', async () => {
+  it('seeds the sample products, with size-priced items as "price varies"', async () => {
     expect(await scalar<number>(db, 'select count(*)::int from products')).toBe(13)
-    const pitso = await db.query<{ selling_price: number; is_active: boolean }>(
-      `select selling_price, is_active from products where name like 'Pitso%'`,
+    const pitso = await db.query<{ selling_price: number; is_active: boolean; is_variable_price: boolean }>(
+      `select selling_price, is_active, is_variable_price from products where name like 'Pitso%'`,
     )
-    expect(pitso.rows[0]).toEqual({ selling_price: 0, is_active: false })
+    expect(pitso.rows[0]).toEqual({ selling_price: 0, is_active: true, is_variable_price: true })
   })
 
   it('seed is safe to run twice', async () => {
@@ -399,8 +399,8 @@ describe('client ↔ server contract', () => {
     const before = await stockOf(bbqId)
     const { order } = buildSale({
       cart: [
-        { product_id: bbqId, name: 'BBQ', unit_price: 2500, unit_cost: 1400, quantity: 3 },
-        { product_id: liempoId, name: 'Liempo', unit_price: 10000, unit_cost: 6000, quantity: 1 },
+        { line_key: bbqId, variable_price: false, product_id: bbqId, name: 'BBQ', unit_price: 2500, unit_cost: 1400, quantity: 3 },
+        { line_key: liempoId, variable_price: false, product_id: liempoId, name: 'Liempo', unit_price: 10000, unit_cost: 6000, quantity: 1 },
       ],
       paymentMethod: 'cash',
       amountReceived: 50000,
@@ -465,5 +465,49 @@ describe('security hardening', () => {
   it('audit log is admin-only', async () => {
     expect(await as(db, CASHIER, (tx) => scalar<number>(tx, 'select count(*)::int from audit_logs'))).toBe(0)
     expect(await as(db, ADMIN, (tx) => scalar<number>(tx, 'select count(*)::int from audit_logs'))).toBeGreaterThan(0)
+  })
+})
+
+describe('price varies (same product at different prices in one order)', () => {
+  it('stores one line per price, deducts and returns stock once per product', async () => {
+    const pitsoId = await scalar<string>(db, `select id from products where name like 'Pitso%'`)
+    await as(db, ADMIN, (tx) =>
+      rpc(tx, 'public.record_stock_movement($1::jsonb)', [
+        JSON.stringify({ id: uuid(), product_id: pitsoId, quantity_change: 20, movement_type: 'STOCK_IN' }),
+      ]),
+    )
+    const before = await stockOf(pitsoId)
+    const movementId = uuid()
+    const order = orderPayload({
+      total: 9000 + 2 * 13000,
+      amount_received: 50000,
+      change_due: 50000 - 35000,
+      items: [
+        { id: uuid(), movement_id: movementId, product_id: pitsoId, product_name_snapshot: 'Pitso', quantity: 1, unit_price: 9000, unit_cost: 6000 },
+        { id: uuid(), movement_id: movementId, product_id: pitsoId, product_name_snapshot: 'Pitso', quantity: 2, unit_price: 13000, unit_cost: 6000 },
+      ],
+    })
+    expect((await syncOrder(CASHIER, order)).result).toBe('created')
+    expect((await syncOrder(CASHIER, order)).result).toBe('duplicate')
+    expect(await stockOf(pitsoId)).toBe(before - 3)
+    expect(await scalar<number>(db, 'select count(*)::int from order_items where order_id = $1', [order.id])).toBe(2)
+    expect(await scalar<number>(db, 'select count(*)::int from inventory_movements where reference_id = $1', [order.id])).toBe(1)
+
+    await as(db, ADMIN, (tx) => rpc(tx, `public.cancel_order($1, 'Wrong size', now(), $2, $3::jsonb)`, [order.id, POS_DEVICE, JSON.stringify({ [pitsoId]: uuid() })]))
+    expect(await stockOf(pitsoId)).toBe(before)
+  })
+
+  it('rejects items of one product with different movement ids (would under-deduct)', async () => {
+    const pitsoId = await scalar<string>(db, `select id from products where name like 'Pitso%'`)
+    const bad = orderPayload({
+      total: 9000 + 13000,
+      amount_received: 22000,
+      change_due: 0,
+      items: [
+        { id: uuid(), movement_id: uuid(), product_id: pitsoId, product_name_snapshot: 'Pitso', quantity: 1, unit_price: 9000, unit_cost: 0 },
+        { id: uuid(), movement_id: uuid(), product_id: pitsoId, product_name_snapshot: 'Pitso', quantity: 1, unit_price: 13000, unit_cost: 0 },
+      ],
+    })
+    await expect(syncOrder(CASHIER, bad)).rejects.toThrow(/one movement id/)
   })
 })

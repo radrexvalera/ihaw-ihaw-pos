@@ -77,12 +77,13 @@ export function ProductsAdmin({ onBack }: { onBack: () => void }) {
                       {!p.is_active && <Badge className="bg-stone-500 text-white">Disabled</Badge>}
                       {p.is_sold_out && <Badge className="bg-stone-800 text-white">Sold out</Badge>}
                       {p.unit_cost === 0 && <Badge className="bg-amber-400 text-black">No cost</Badge>}
-                      {p.selling_price === 0 && <Badge className="bg-red-600 text-white">No price</Badge>}
+                      {p.is_variable_price && <Badge className="bg-sky-700 text-white">Price varies</Badge>}
+                      {p.selling_price === 0 && !p.is_variable_price && <Badge className="bg-red-600 text-white">No price</Badge>}
                     </span>
                     <span className="mt-1 grid grid-cols-3 gap-2 text-sm">
-                      <Stat label="Price" value={formatPeso(p.selling_price)} />
+                      <Stat label="Price" value={p.is_variable_price && p.selling_price === 0 ? 'Varies' : formatPeso(p.selling_price)} />
                       <Stat label="Cost" value={formatPeso(p.unit_cost)} />
-                      <Stat label="Profit/pc" value={formatPeso(profit)} warn={profit < 0} />
+                      <Stat label="Profit/pc" value={p.selling_price === 0 ? '—' : formatPeso(profit)} warn={p.selling_price > 0 && profit < 0} />
                     </span>
                   </button>
                   <span className="flex flex-col border-l border-stone-100">

@@ -33,7 +33,7 @@ export function ProductTile({ product: p, quantityInCart, onAdd, onRemove, onLon
       type="button"
       {...press}
       aria-disabled={!sellable}
-      aria-label={`${p.name}, ${formatPeso(p.selling_price)}${p.is_sold_out ? ', sold out' : ''}${
+      aria-label={`${p.name}, ${p.is_variable_price ? 'price varies' : formatPeso(p.selling_price)}${p.is_sold_out ? ', sold out' : ''}${
         inCart ? `, ${quantityInCart} in order. Tap left side to remove one, right side to add one` : ''
       }`}
       className={`relative flex min-h-24 select-none flex-col justify-between rounded-2xl border-2 p-3 text-left transition-transform active:scale-[0.98] ${
@@ -49,7 +49,9 @@ export function ProductTile({ product: p, quantityInCart, onAdd, onRemove, onLon
         <>
           <span className="flex items-start justify-between gap-2">
             <span className="line-clamp-2 text-lg font-extrabold uppercase leading-tight">{p.name}</span>
-            <span className="shrink-0 text-base font-bold tabular-nums text-stone-600">{formatPeso(p.selling_price)}</span>
+            <span className="shrink-0 text-base font-bold tabular-nums text-stone-600">
+              {p.is_variable_price ? 'Varies' : formatPeso(p.selling_price)}
+            </span>
           </span>
           {/* Left half = remove, right half = add (see tileAction). */}
           <span className="mt-2 grid grid-cols-[1fr_auto_1fr] items-center gap-1" aria-hidden="true">
@@ -68,6 +70,8 @@ export function ProductTile({ product: p, quantityInCart, onAdd, onRemove, onLon
           <span className="mt-1 flex items-end justify-between gap-1">
             {p.is_sold_out ? (
               <span className="rounded-md bg-stone-700 px-2 py-0.5 text-sm font-extrabold text-white">SOLD OUT</span>
+            ) : p.is_variable_price ? (
+              <span className="text-base font-extrabold uppercase text-sky-800">Price varies</span>
             ) : p.selling_price === 0 ? (
               <span className="text-sm font-bold">NO PRICE</span>
             ) : (

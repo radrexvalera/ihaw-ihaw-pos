@@ -101,7 +101,7 @@ export async function pushOutbox(): Promise<void> {
 
 // ------------------------------------------------------------------ pull
 const PRODUCT_COLUMNS =
-  'id,name,selling_price,unit_cost,stock_quantity,low_stock_threshold,is_active,is_sold_out,sort_order,created_at,updated_at'
+  'id,name,selling_price,unit_cost,stock_quantity,low_stock_threshold,is_active,is_sold_out,is_variable_price,sort_order,created_at,updated_at'
 
 export async function pullProducts(): Promise<void> {
   const { data, error } = await supabase.from('products').select(PRODUCT_COLUMNS)

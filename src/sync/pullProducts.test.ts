@@ -26,6 +26,7 @@ function product(id: string, stock: number): Product {
     low_stock_threshold: 10,
     is_active: true,
     is_sold_out: false,
+    is_variable_price: false,
     sort_order: 10,
     created_at: '2026-10-07T00:00:00Z',
     updated_at: '2026-10-07T00:00:00Z',

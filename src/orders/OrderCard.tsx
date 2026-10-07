@@ -4,7 +4,7 @@ import { isChangePending } from '../data/useOrders'
 import { formatPeso } from '../lib/money'
 import { formatTime } from '../lib/time'
 import type { GrillStatus, Order } from '../lib/types'
-import { totalPieces } from '../pos/checkout'
+import { piecesByProduct, totalPieces } from '../pos/checkout'
 
 const GRILL_LABEL: Record<GrillStatus, { text: string; cls: string }> = {
   new: { text: 'NEW', cls: 'bg-sky-100 text-sky-900' },
@@ -43,9 +43,9 @@ export function OrderCard({ order, unsynced, onOpen }: { order: Order; unsynced:
         </span>
       </div>
       <ul className="mt-1 text-lg font-semibold leading-snug">
-        {order.items.map((i) => (
-          <li key={i.id}>
-            {i.quantity} {i.product_name_snapshot}
+        {piecesByProduct(order).map((i) => (
+          <li key={i.product_id}>
+            {i.quantity} {i.name}
           </li>
         ))}
       </ul>

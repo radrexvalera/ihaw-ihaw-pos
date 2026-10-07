@@ -45,6 +45,8 @@ export interface Product {
   low_stock_threshold: number
   is_active: boolean
   is_sold_out: boolean
+  /** Priced by size: the cashier enters the price at sale; selling_price is only the usual price. */
+  is_variable_price: boolean
   sort_order: number
   created_at: string
   updated_at: string
@@ -53,7 +55,14 @@ export interface Product {
 /** Fields an admin may edit directly. stock_quantity is deliberately absent. */
 export type ProductEditable = Pick<
   Product,
-  'name' | 'selling_price' | 'unit_cost' | 'low_stock_threshold' | 'is_active' | 'is_sold_out' | 'sort_order'
+  | 'name'
+  | 'selling_price'
+  | 'unit_cost'
+  | 'low_stock_threshold'
+  | 'is_active'
+  | 'is_sold_out'
+  | 'is_variable_price'
+  | 'sort_order'
 >
 
 export interface OrderItem {

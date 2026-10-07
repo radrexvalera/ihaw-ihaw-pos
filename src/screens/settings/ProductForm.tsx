@@ -18,7 +18,8 @@ interface Props {
 export function ProductForm({ product, nextSortOrder, onDone }: Props) {
   const online = useOnline()
   const [name, setName] = useState(product?.name ?? '')
-  const [price, setPrice] = useState(product ? toPesoInput(product.selling_price) : '')
+  const [variable, setVariable] = useState(product?.is_variable_price ?? false)
+  const [price, setPrice] = useState(product && !(product.is_variable_price && product.selling_price === 0) ? toPesoInput(product.selling_price) : '')
   const [cost, setCost] = useState(product ? toPesoInput(product.unit_cost) : '')
   const [threshold, setThreshold] = useState(String(product?.low_stock_threshold ?? 10))
   const [active, setActive] = useState(product?.is_active ?? true)
@@ -26,7 +27,8 @@ export function ProductForm({ product, nextSortOrder, onDone }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const priceC = parsePesos(price)
+  // A "price varies" product may leave the usual price empty (₱0).
+  const priceC = variable && price.trim() === '' ? 0 : parsePesos(price)
   const costC = cost.trim() === '' ? 0 : parsePesos(cost)
   const thresholdN = /^\d{1,6}$/.test(threshold.trim()) ? Number(threshold.trim()) : null
   const errors = {
@@ -43,7 +45,10 @@ export function ProductForm({ product, nextSortOrder, onDone }: Props) {
     e.preventDefault()
     setTouched(true)
     if (!valid || priceC === null || costC === null || thresholdN === null) return
-    if (active && priceC === 0 && !confirm('Price is ₱0. Sell this product for free?')) return
+    if (active && !variable && priceC === 0) {
+      setError('Enter a selling price, or turn on "Price varies" if the price depends on size.')
+      return
+    }
 
     const input: ProductEditable = {
       name: name.trim(),
@@ -52,6 +57,7 @@ export function ProductForm({ product, nextSortOrder, onDone }: Props) {
       low_stock_threshold: thresholdN,
       is_active: active,
       is_sold_out: soldOut,
+      is_variable_price: variable,
       sort_order: product?.sort_order ?? nextSortOrder,
     }
     setBusy(true)
@@ -70,11 +76,36 @@ export function ProductForm({ product, nextSortOrder, onDone }: Props) {
     <Sheet title={product ? 'Edit product' : 'New product'} closeStyle="back" onClose={onDone}>
       <form onSubmit={submit} className="space-y-4" noValidate>
         <Field label="Name" value={name} onChange={setName} maxLength={40} autoCapitalize="words" error={show(errors.name)} />
+        <ToggleRow
+          label="Price varies"
+          description="Cashier enters the price at each sale (e.g. priced by size)"
+          checked={variable}
+          onChange={setVariable}
+        />
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Selling price" prefix="₱" inputMode="decimal" value={price} onChange={setPrice} error={show(errors.price)} />
-          <Field label="Unit cost" prefix="₱" inputMode="decimal" value={cost} onChange={setCost} error={show(errors.cost)} />
+          <Field
+            label={variable ? 'Usual price (optional)' : 'Selling price'}
+            prefix="₱"
+            inputMode="decimal"
+            value={price}
+            onChange={setPrice}
+            error={show(errors.price)}
+          />
+          <Field
+            label={variable ? 'Average unit cost' : 'Unit cost'}
+            prefix="₱"
+            inputMode="decimal"
+            value={cost}
+            onChange={setCost}
+            error={show(errors.cost)}
+          />
         </div>
-        {priceC !== null && costC !== null && (
+        {variable && (
+          <p className="text-sm text-stone-500">
+            The usual price is suggested on the price pad. Profit uses the average unit cost for every size.
+          </p>
+        )}
+        {priceC !== null && costC !== null && priceC > 0 && (
           <p className="rounded-xl bg-white p-3 text-lg">
             Estimated gross profit per piece:{' '}
             <strong className={priceC - costC < 0 ? 'text-red-600' : 'text-green-700'}>{formatPeso(priceC - costC)}</strong>

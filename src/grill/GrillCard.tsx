@@ -2,7 +2,7 @@ import { Check, Undo2 } from 'lucide-react'
 import { Button } from '../components/Button'
 import { setGrillStatus } from '../data/actions'
 import type { Order } from '../lib/types'
-import { totalPieces } from '../pos/checkout'
+import { piecesByProduct, totalPieces } from '../pos/checkout'
 import { markDoneWithUndo, undoDone } from './doneUndo'
 import { formatWait, waitLevel, waitSeconds } from './queue'
 
@@ -25,6 +25,8 @@ interface Props {
 
 /** One order on the grill. Deliberately shows NO prices, payment or change. */
 export function GrillCard({ order, now, doneUndo, oldest, compact }: Props) {
+  // Sizes of a "price varies" product are one thing to the griller: 2 × PITSO.
+  const pieces = piecesByProduct(order)
   const seconds = waitSeconds(order.created_at, now)
   const level = LEVEL[waitLevel(seconds)]
   const grilling = order.grill_status === 'grilling'
@@ -45,10 +47,10 @@ export function GrillCard({ order, now, doneUndo, oldest, compact }: Props) {
             <span className={`ml-auto text-xl font-black tabular-nums ${level.timer}`}>{formatWait(seconds)}</span>
           </div>
           <p className="mt-1 text-lg font-bold uppercase leading-snug">
-            {order.items.map((i, idx) => (
-              <span key={i.id}>
+            {pieces.map((i, idx) => (
+              <span key={i.product_id}>
                 {idx > 0 && <span className="text-stone-300"> · </span>}
-                <span className="text-ember-700 tabular-nums">{i.quantity}×</span> {i.product_name_snapshot}
+                <span className="text-ember-700 tabular-nums">{i.quantity}×</span> {i.name}
               </span>
             ))}
           </p>
@@ -67,9 +69,9 @@ export function GrillCard({ order, now, doneUndo, oldest, compact }: Props) {
           </div>
 
           <ul className="mt-3 space-y-1">
-            {order.items.map((i) => (
-              <li key={i.id} className="text-3xl font-extrabold uppercase leading-tight">
-                <span className="text-ember-700 tabular-nums">{i.quantity} ×</span> {i.product_name_snapshot}
+            {pieces.map((i) => (
+              <li key={i.product_id} className="text-3xl font-extrabold uppercase leading-tight">
+                <span className="text-ember-700 tabular-nums">{i.quantity} ×</span> {i.name}
               </li>
             ))}
           </ul>

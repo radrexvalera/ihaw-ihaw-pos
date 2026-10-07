@@ -44,9 +44,14 @@ export function buildSale(input: SaleInput): { order: Order; movements: LocalMov
   const createdAt = input.now.toISOString()
   const orderId = uuid()
 
+  // Stock moves once per product per order, even when a "price varies"
+  // product has several lines (sizes): those lines share one movement id.
+  const movementIds = new Map<string, string>()
+  for (const line of cart) if (!movementIds.has(line.product_id)) movementIds.set(line.product_id, uuid())
+
   const items = cart.map((line) => ({
     id: uuid(),
-    movement_id: uuid(),
+    movement_id: movementIds.get(line.product_id)!,
     product_id: line.product_id,
     product_name_snapshot: line.name,
     quantity: line.quantity,
@@ -82,10 +87,10 @@ export function buildSale(input: SaleInput): { order: Order; movements: LocalMov
     items,
   }
 
-  const movements: LocalMovement[] = items.map((item) => ({
-    id: item.movement_id,
-    product_id: item.product_id,
-    quantity_change: -item.quantity,
+  const movements: LocalMovement[] = [...movementIds].map(([productId, movementId]) => ({
+    id: movementId,
+    product_id: productId,
+    quantity_change: -items.filter((i) => i.product_id === productId).reduce((n, i) => n + i.quantity, 0),
     movement_type: 'SALE',
     reference_id: orderId,
     reason: null,
@@ -115,9 +120,22 @@ export function syncOrderPayload(order: Order): Record<string, unknown> {
   }
 }
 
+/** Items merged per product (sizes of a "price varies" product combined) — what the grill needs. */
+export function piecesByProduct(order: Pick<Order, 'items'>): { product_id: string; name: string; quantity: number }[] {
+  const merged = new Map<string, { product_id: string; name: string; quantity: number }>()
+  for (const i of order.items) {
+    const m = merged.get(i.product_id)
+    if (m) m.quantity += i.quantity
+    else merged.set(i.product_id, { product_id: i.product_id, name: i.product_name_snapshot, quantity: i.quantity })
+  }
+  return [...merged.values()]
+}
+
 /** Short item summary like "3 BBQ, 2 Isaw Manok". */
 export function itemSummary(order: Pick<Order, 'items'>): string {
-  return order.items.map((i) => `${i.quantity} ${i.product_name_snapshot}`).join(', ')
+  return piecesByProduct(order)
+    .map((i) => `${i.quantity} ${i.name}`)
+    .join(', ')
 }
 
 export function totalPieces(order: Pick<Order, 'items'>): number {

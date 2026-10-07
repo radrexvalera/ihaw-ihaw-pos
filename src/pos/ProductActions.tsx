@@ -16,7 +16,7 @@ export function ProductActions({ product, onClose }: { product: Product; onClose
         <div>
           <h2 className="text-2xl font-extrabold uppercase">{product.name}</h2>
           <p className="text-lg text-stone-600">
-            {formatPeso(product.selling_price)} · {product.stock_quantity} pcs in stock
+            {product.is_variable_price ? 'Price varies' : formatPeso(product.selling_price)} · {product.stock_quantity} pcs in stock
           </p>
         </div>
         {product.is_sold_out ? (

@@ -76,6 +76,7 @@ Migrations live in `supabase/migrations/` and are applied in order:
 | `0007_rls.sql` | Row Level Security, grants, Realtime publication |
 | `0008_backfill_profiles.sql` | Creates profiles for logins made before the migrations existed |
 | `0009_function_search_path.sql` | Security hardening: pins `search_path` on every function |
+| `0010_variable_price.sql` | "Price varies" products: one order line per price, stock moved once per product |
 
 To apply them to your hosted project with the Supabase CLI:
 
@@ -91,7 +92,7 @@ To run a full local Supabase instead (needs Docker): `npx supabase start`, then 
 
 `supabase/seed.sql` adds **sample** products with the known starter prices: BBQ ₱25, Liempo ₱100, Tenga ₱20, and so on. Everything can be edited in **Menu → Products**.
 
-- **Pitso / Chicken Breast** and **Hita** have no known price yet. They are seeded at ₱0 and **disabled**. Set a price, then enable them.
+- **Pitso / Chicken Breast** and **Hita** are priced by size, so they are **"price varies"** products: the cashier enters the price at each sale. Prices already used that day appear as one-tap buttons. Set an average unit cost so profit estimates are meaningful.
 - **Unit costs are all ₱0.** Set them before trusting the gross profit report. The products screen marks these with a "No cost" badge.
 - Running the seed again is safe (it skips existing names).
 
@@ -160,7 +161,7 @@ Do these once, before the cart starts using the app for real:
 2. **Supabase → Authentication → URL Configuration:** set *Site URL* to your Netlify URL.
 3. **Supabase → Advisors → Security Advisor:** it should show no errors. The tests in `tests/db/schema.test.ts` also check that RLS is on for every table, that every function pins its `search_path`, and that signed-in users can execute only the RPC API.
 4. **Netlify → Environment variables:** set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (the publishable `sb_publishable_…` key), and **never** the secret or service-role key.
-5. **Products:** set a unit cost for every product. Set prices for Pitso and Hita, then enable them.
+5. **Products:** set a unit cost for every product (an *average* cost for price-varies items such as Pitso and Hita).
 6. **Stock:** use Stock → Count to set each product's actual starting count.
 7. **Each phone:** open the Netlify URL, sign in, register the phone (cashier or grill), install it to the home screen, then test once in airplane mode.
 8. **Phone clocks** must be set automatically, because sale times come from the phone.

@@ -44,6 +44,7 @@ function product(id: string, price: number, stock: number): Product {
     low_stock_threshold: 5,
     is_active: true,
     is_sold_out: false,
+    is_variable_price: false,
     sort_order: 0,
     created_at: '',
     updated_at: '',
@@ -51,7 +52,7 @@ function product(id: string, price: number, stock: number): Product {
 }
 
 function line(p: Product, quantity: number) {
-  return { product_id: p.id, name: p.name, unit_price: p.selling_price, unit_cost: p.unit_cost, quantity }
+  return { line_key: p.id, variable_price: false, product_id: p.id, name: p.name, unit_price: p.selling_price, unit_cost: p.unit_cost, quantity }
 }
 
 const bbq = product('bbq', 2500, 100)
@@ -217,5 +218,23 @@ describe('stock movements', () => {
     await expect(move('ADJUSTMENT_MINUS', -2, null)).rejects.toThrow(/reason/)
     await expect(move('STOCK_IN', -5)).rejects.toThrow(/sign/)
     expect(await db.outbox.count()).toBe(0)
+  })
+})
+
+describe('price varies offline', () => {
+  it('two sizes deduct and return stock once per product', async () => {
+    const pitso = { ...product('pitso', 0, 20), is_variable_price: true }
+    await db.products.put(pitso)
+    const sizes = [
+      { ...line(pitso, 1), line_key: 'pitso@9000', variable_price: true, unit_price: 9000 },
+      { ...line(pitso, 2), line_key: 'pitso@13000', variable_price: true, unit_price: 13000 },
+    ]
+    const order = await sell(50000, sizes)
+    expect(await stock('pitso')).toBe(17)
+    expect(await db.movements.count()).toBe(1)
+    await cancelOrder(order.id, 'Wrong size', USER, device)
+    expect(await stock('pitso')).toBe(20)
+    const cancel = (await db.outbox.toArray()).find((e) => e.type === 'cancel_order')!
+    expect(Object.keys(cancel.payload.p_movement_ids as object)).toEqual(['pitso'])
   })
 })

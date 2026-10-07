@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import type { Product } from '../lib/types'
-import { addProduct, cartTotals, decrement, increment, reconcileCart, removeLine, setQuantity, type Cart } from './cart'
+import {
+  addProduct,
+  cartTotals,
+  decrement,
+  increment,
+  lastPriceOf,
+  quantityOfProduct,
+  reconcileCart,
+  removeLine,
+  removeOneOfProduct,
+  setQuantity,
+  type Cart,
+} from './cart'
 
 function product(id: string, price: number, extra: Partial<Product> = {}): Product {
   return {
@@ -12,6 +24,7 @@ function product(id: string, price: number, extra: Partial<Product> = {}): Produ
     low_stock_threshold: 5,
     is_active: true,
     is_sold_out: false,
+    is_variable_price: false,
     sort_order: 0,
     created_at: '',
     updated_at: '',
@@ -74,5 +87,45 @@ describe('cart', () => {
     const cart = addProduct(addProduct([], bbq), tenga)
     const next = reconcileCart(cart, [{ ...bbq, selling_price: 3000 }, { ...tenga, is_sold_out: true }])
     expect(next).toEqual([{ ...cart[0]!, unit_price: 3000 }])
+  })
+})
+
+describe('price varies (priced by size)', () => {
+  const pitso = product('pitso', 0, { is_variable_price: true, unit_cost: 6000 })
+
+  it('needs a typed price, keeps one line per price and merges equal prices', () => {
+    expect(addProduct([], pitso)).toEqual([]) // no price given
+    let cart: Cart = addProduct([], pitso, 9000)
+    cart = addProduct(cart, pitso, 13000)
+    cart = addProduct(cart, pitso, 9000)
+    expect(cart.map((l) => [l.line_key, l.quantity, l.unit_price])).toEqual([
+      ['pitso@9000', 2, 9000],
+      ['pitso@13000', 1, 13000],
+    ])
+    expect(quantityOfProduct(cart, 'pitso')).toBe(3)
+    expect(cartTotals(cart).total).toBe(31000)
+    expect(lastPriceOf(cart, 'pitso')).toBe(13000)
+  })
+
+  it('tile minus removes from the most recently added size', () => {
+    let cart: Cart = addProduct(addProduct([], pitso, 9000), pitso, 13000)
+    cart = removeOneOfProduct(cart, 'pitso')
+    expect(cart.map((l) => l.line_key)).toEqual(['pitso@9000'])
+  })
+
+  it('reconcile keeps typed prices but refreshes cost', () => {
+    const cart = addProduct([], pitso, 9000)
+    const next = reconcileCart(cart, [{ ...pitso, unit_cost: 6500, selling_price: 10000 }])
+    expect(next[0]).toMatchObject({ unit_price: 9000, unit_cost: 6500 })
+  })
+
+  it('a fixed product switched to "price varies" drops its line (needs a typed price)', () => {
+    const cart = addProduct([], bbq)
+    expect(reconcileCart(cart, [{ ...bbq, is_variable_price: true }])).toEqual([])
+  })
+
+  it('upgrades carts saved without line keys', () => {
+    const old = [{ product_id: 'bbq', name: 'BBQ', unit_price: 2500, unit_cost: 1250, quantity: 2 }] as unknown as Cart
+    expect(reconcileCart(old, [bbq])[0]).toMatchObject({ line_key: 'bbq', quantity: 2 })
   })
 })

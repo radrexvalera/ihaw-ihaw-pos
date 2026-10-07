@@ -3,9 +3,9 @@ import type { CartLine } from './cart'
 import { buildSale, changeFor, CheckoutError, itemSummary, orderRef, syncOrderPayload, totalPieces, type SaleInput } from './checkout'
 
 const cart: CartLine[] = [
-  { product_id: 'bbq', name: 'BBQ', unit_price: 2500, unit_cost: 1400, quantity: 3 },
-  { product_id: 'isaw', name: 'Isaw Manok', unit_price: 1000, unit_cost: 500, quantity: 2 },
-  { product_id: 'liempo', name: 'Liempo', unit_price: 9000, unit_cost: 6000, quantity: 1 },
+  { line_key: 'bbq', variable_price: false, product_id: 'bbq', name: 'BBQ', unit_price: 2500, unit_cost: 1400, quantity: 3 },
+  { line_key: 'isaw', variable_price: false, product_id: 'isaw', name: 'Isaw Manok', unit_price: 1000, unit_cost: 500, quantity: 2 },
+  { line_key: 'liempo', variable_price: false, product_id: 'liempo', name: 'Liempo', unit_price: 9000, unit_cost: 6000, quantity: 1 },
 ]
 // 75 + 20 + 90 = 185
 
@@ -113,5 +113,27 @@ describe('payload helpers', () => {
     const item = (payload.items as Record<string, unknown>[])[0]!
     expect(item).toHaveProperty('movement_id')
     expect(item).not.toHaveProperty('line_total')
+  })
+})
+
+describe('price varies in an order', () => {
+  it('two sizes of one product share ONE movement for the summed quantity', () => {
+    const { order, movements } = buildSale(
+      input({
+        cart: [
+          { line_key: 'pitso@9000', variable_price: true, product_id: 'pitso', name: 'Pitso', unit_price: 9000, unit_cost: 6000, quantity: 1 },
+          { line_key: 'pitso@13000', variable_price: true, product_id: 'pitso', name: 'Pitso', unit_price: 13000, unit_cost: 6000, quantity: 2 },
+          { line_key: 'bbq', variable_price: false, product_id: 'bbq', name: 'BBQ', unit_price: 2500, unit_cost: 1400, quantity: 1 },
+        ],
+      }),
+    )
+    expect(order.total).toBe(9000 + 26000 + 2500)
+    expect(order.items).toHaveLength(3)
+    expect(order.items[0]!.movement_id).toBe(order.items[1]!.movement_id)
+    expect(movements.map((m) => [m.product_id, m.quantity_change])).toEqual([
+      ['pitso', -3],
+      ['bbq', -1],
+    ])
+    expect(itemSummary(order)).toBe('3 Pitso, 1 BBQ')
   })
 })

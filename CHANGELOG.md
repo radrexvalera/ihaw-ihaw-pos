@@ -5,6 +5,25 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### "Price varies" products (2026-10-07)
+
+#### Added
+- **Price varies** switch on products, for items priced by size such as Pitso and Hita. The cashier enters the price at sale, and the product's own price becomes an optional *usual price*.
+- **POS price pad:**
+  - Tapping a price-varies product opens it.
+  - Prices already used today for that product appear as one-tap buttons, along with the usual price and the last price entered.
+  - Any other price can be typed on the keypad.
+  - The tile's right half reopens the pad, and the left half removes the most recently added piece.
+- **One order line per price:** two sizes in one order become `1 Pitso @ ₱90` and `2 Pitso @ ₱130`. The grill and order cards still show them merged as `3 × PITSO`.
+- Migration `0010_variable_price.sql`:
+  - adds `products.is_variable_price`
+  - allows one order item per *product and price*
+  - makes `sync_order` and `cancel_order` deduct and return stock **once per product** (quantities summed), keeping the duplicate-deduction guard
+  - rejects payloads where one product uses different movement ids
+  - marks Pitso and Hita as price varies and enables them
+- Carts saved by older versions of the app are upgraded automatically.
+- Tests: multi-size lines, deduction and return happening once (in the app and in Postgres), and rejection of inconsistent movement ids (134 tests).
+
 ### Phase 7 — Production hardening (2026-10-07)
 
 #### Security

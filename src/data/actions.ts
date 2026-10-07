@@ -96,10 +96,13 @@ export async function cancelOrder(orderId: string, reason: string, userId: strin
   await db.transaction('rw', db.orders, db.movements, db.outbox, async () => {
     const order = await db.orders.get(orderId)
     if (!order || order.status === 'cancelled') return
-    const returns: LocalMovement[] = order.items.map((item) => ({
+    // One return per product (matches the server, which groups lines of the same product).
+    const perProduct = new Map<string, number>()
+    for (const item of order.items) perProduct.set(item.product_id, (perProduct.get(item.product_id) ?? 0) + item.quantity)
+    const returns: LocalMovement[] = [...perProduct].map(([productId, quantity]) => ({
       id: crypto.randomUUID(),
-      product_id: item.product_id,
-      quantity_change: item.quantity,
+      product_id: productId,
+      quantity_change: quantity,
       movement_type: 'CANCELLED_SALE_RETURN',
       reference_id: orderId,
       reason: trimmed,

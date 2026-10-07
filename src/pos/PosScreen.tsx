@@ -6,15 +6,22 @@ import { useProducts } from '../data/useProducts'
 import { formatPeso } from '../lib/money'
 import type { Product } from '../lib/types'
 import { PendingChangeBanner } from '../orders/PendingChange'
-import { addProduct, cartTotals, decrement, reconcileCart } from './cart'
+import { addProduct, cartTotals, lastPriceOf, quantityOfProduct, reconcileCart, removeOneOfProduct } from './cart'
 import { getCart, updateCart, useCart } from './cartStore'
 import { CartSheet } from './CartSheet'
 import { CheckoutSheet } from './CheckoutSheet'
+import { PriceSheet } from './PriceSheet'
 import { ProductActions } from './ProductActions'
 import { ProductTile } from './ProductTile'
 import { SaleComplete } from './SaleComplete'
 
-type Overlay = { kind: 'cart' } | { kind: 'checkout' } | { kind: 'done'; orderId: string } | { kind: 'product'; product: Product } | null
+type Overlay =
+  | { kind: 'cart' }
+  | { kind: 'checkout' }
+  | { kind: 'done'; orderId: string }
+  | { kind: 'product'; product: Product }
+  | { kind: 'price'; product: Product }
+  | null
 
 export function PosScreen() {
   const products = useProducts()
@@ -33,7 +40,6 @@ export function PosScreen() {
 
   if (!products) return <Spinner />
   const visible = products.filter((p) => p.is_active)
-  const qty = new Map(cart.map((l) => [l.product_id, l.quantity]))
 
   return (
     <div className="flex h-full flex-col">
@@ -50,14 +56,16 @@ export function PosScreen() {
               <ProductTile
                 key={p.id}
                 product={p}
-                quantityInCart={qty.get(p.id) ?? 0}
+                quantityInCart={quantityOfProduct(cart, p.id)}
                 onAdd={() => {
+                  // "Price varies" products ask for the price first.
+                  if (p.is_variable_price) return setOverlay({ kind: 'price', product: p })
                   navigator.vibrate?.(10)
                   updateCart((c) => addProduct(c, p))
                 }}
                 onRemove={() => {
                   navigator.vibrate?.([10, 40, 10])
-                  updateCart((c) => decrement(c, p.id))
+                  updateCart((c) => removeOneOfProduct(c, p.id))
                 }}
                 onLongPress={() => setOverlay({ kind: 'product', product: p })}
               />
@@ -94,6 +102,18 @@ export function PosScreen() {
         <CheckoutSheet onClose={() => setOverlay(null)} onComplete={(order) => setOverlay({ kind: 'done', orderId: order.id })} />
       )}
       {overlay?.kind === 'done' && <SaleComplete orderId={overlay.orderId} onClose={closeOverlay} />}
+      {overlay?.kind === 'price' && (
+        <PriceSheet
+          product={overlay.product}
+          lastPrice={lastPriceOf(cart, overlay.product.id)}
+          onClose={closeOverlay}
+          onAdd={(price) => {
+            navigator.vibrate?.(10)
+            updateCart((c) => addProduct(c, overlay.product, price))
+            setOverlay(null)
+          }}
+        />
+      )}
       {overlay?.kind === 'product' && (
         <ProductActions product={products.find((p) => p.id === overlay.product.id) ?? overlay.product} onClose={() => setOverlay(null)} />
       )}

@@ -38,7 +38,7 @@ export function CartSheet({ onClose, onCheckout }: { onClose: () => void; onChec
       ) : (
         <ul className="space-y-2">
           {cart.map((line) => (
-            <li key={line.product_id} className="rounded-2xl bg-white p-3">
+            <li key={line.line_key} className="rounded-2xl bg-white p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate text-xl font-extrabold uppercase">{line.name}</p>
@@ -51,7 +51,7 @@ export function CartSheet({ onClose, onCheckout }: { onClose: () => void; onChec
               <div className="mt-2 flex items-center gap-2">
                 <button
                   aria-label={`Remove one ${line.name}`}
-                  onClick={() => updateCart((c) => decrement(c, line.product_id))}
+                  onClick={() => updateCart((c) => decrement(c, line.line_key))}
                   className="flex size-14 items-center justify-center rounded-xl border-2 border-stone-300 active:bg-stone-100"
                 >
                   <Minus className="size-7" />
@@ -59,14 +59,14 @@ export function CartSheet({ onClose, onCheckout }: { onClose: () => void; onChec
                 <span className="w-14 text-center text-3xl font-extrabold tabular-nums">{line.quantity}</span>
                 <button
                   aria-label={`Add one ${line.name}`}
-                  onClick={() => updateCart((c) => increment(c, line.product_id))}
+                  onClick={() => updateCart((c) => increment(c, line.line_key))}
                   className="flex size-14 items-center justify-center rounded-xl bg-ember-600 text-white active:bg-ember-700"
                 >
                   <Plus className="size-7" />
                 </button>
                 <button
                   aria-label={`Remove ${line.name} from order`}
-                  onClick={() => updateCart((c) => removeLine(c, line.product_id))}
+                  onClick={() => updateCart((c) => removeLine(c, line.line_key))}
                   className="ml-auto flex size-14 items-center justify-center rounded-xl text-red-600 active:bg-red-50"
                 >
                   <Trash2 className="size-7" />
